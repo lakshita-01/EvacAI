@@ -1,0 +1,33 @@
+.map-simulation-builder {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid #22394b;
+  padding-top: 12px;
+}
+
+.map-simulation-builder h4 {
+  margin: 0 0 2px;
+  color: #b7c8d3;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-simulation-builder label {
+  display: grid;
+  gap: 4px;
+  color: #8399aa;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.map-simulation-builder .live-select {
+  margin: 0;
+  min-width: 0;
+}
+
+.map-simulation-builder .scenario-grid {
+  margin-top: 0;
+}

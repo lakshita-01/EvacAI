@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Models (large binary files)
+ai-service/models/fire_smoke/best.pt
+map-service/test_maps/*.dxf
+
+# Node
+node_modules/
+dist/
+.cache/
+
+# Environment
+.env
+!.env.example
+
+# Datasets (large)
+ai-service/datasets/
+ai-service/runs/
+ai-service/wandb/
+
+# OS
+.DS_Store
+Thumbs.db

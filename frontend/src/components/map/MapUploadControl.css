@@ -1,0 +1,104 @@
+.map-upload-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-upload-input {
+  display: none;
+}
+
+.map-upload-button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2c6676;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #10303b;
+  color: #a7f3fc;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.map-upload-button:hover {
+  border-color: #3a8796;
+  background: #15414d;
+}
+
+.map-upload-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.map-upload-formats {
+  color: #71879a;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.map-upload-feedback {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  max-width: min(440px, calc(100vw - 36px));
+  margin: 0;
+  border: 1px solid #235a48;
+  border-radius: 7px;
+  padding: 9px 12px;
+  background: #10251f;
+  color: #9ce8bd;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  font-size: 11px;
+}
+
+.map-upload-feedback.error {
+  border-color: #78343d;
+  background: #2b171d;
+  color: #fda4af;
+}
+
+@media (max-width: 620px) {
+  .map-upload-formats {
+    display: none;
+  }
+}
+
+.map-import-panel {
+  display: grid;
+  gap: 9px;
+  padding: 11px;
+}
+
+.map-import-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.map-import-heading > span {
+  color: #607a8d;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.map-import-panel .map-upload-control {
+  align-items: stretch;
+}
+
+.map-import-panel .map-upload-button {
+  width: 100%;
+  min-height: 36px;
+  justify-content: center;
+}
+
+.map-import-panel .map-upload-formats {
+  display: none;
+}

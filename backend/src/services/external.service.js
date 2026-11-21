@@ -1,8 +1,14 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-const AI_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
-const MAP_URL = process.env.MAP_SERVICE_URL || 'http://127.0.0.1:8001';
+function serviceUrl(url, hostport, localFallback) {
+  if (url) return url;
+  if (hostport) return `http://${hostport}`;
+  return localFallback;
+}
+
+const AI_URL = serviceUrl(process.env.AI_SERVICE_URL, process.env.AI_SERVICE_HOSTPORT, 'http://127.0.0.1:8000');
+const MAP_URL = serviceUrl(process.env.MAP_SERVICE_URL, process.env.MAP_SERVICE_HOSTPORT, 'http://127.0.0.1:8001');
 
 const aiClient = axios.create({ baseURL: AI_URL, timeout: 30000 });
 const mapClient = axios.create({ baseURL: MAP_URL, timeout: 10000 });

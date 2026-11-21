@@ -27,6 +27,7 @@ services:
   - type: web
     name: evac-ai-backend
     runtime: node
+    plan: free
     rootDir: backend
     buildCommand: npm ci
     startCommand: npm start

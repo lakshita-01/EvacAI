@@ -31,14 +31,22 @@ function crosses(a, b, c, d) {
   return o1 * o2 < 0 && o3 * o4 < 0;
 }
 
-export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
+export default function MapDraftEditor({ imageData, initialMap = null, onCancel, onCreate }) {
   const canvasRef = useRef(null);
   const [mode, setMode] = useState('area');
   const [nodeType, setNodeType] = useState('room');
   const [newLabel, setNewLabel] = useState('');
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [walls, setWalls] = useState([]);
+  const [nodes, setNodes] = useState(() => initialMap ? Object.values(initialMap.nodes || {}) : []);
+  const [cameraNodeIds, setCameraNodeIds] = useState(() => initialMap
+    ? (initialMap.cameras || []).map(camera => camera.nodeId)
+    : []);
+  const [edges, setEdges] = useState(() => initialMap ? (initialMap.edges || []) : []);
+  const [walls, setWalls] = useState(() => initialMap
+    ? (initialMap.walls || []).map(wall => ({
+      start: { x: wall.x1, y: wall.y1 },
+      end: { x: wall.x2, y: wall.y2 },
+    }))
+    : []);
   const [connectFrom, setConnectFrom] = useState(null);
   const [wallStart, setWallStart] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -111,6 +119,7 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
 
   function removeNode(nodeId) {
     setNodes(current => current.filter(node => node.id !== nodeId));
+    setCameraNodeIds(current => current.filter(id => id !== nodeId));
     setEdges(current => current.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
     if (connectFrom === nodeId) setConnectFrom(null);
   }
@@ -139,6 +148,7 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
         walls: walls.map(wall => ({
           x1: wall.start.x, y1: wall.start.y, x2: wall.end.x, y2: wall.end.y,
         })),
+        cameraNodeIds: cameraNodeIds.filter(nodeId => nodes.some(node => node.id === nodeId && node.type === 'room')),
         imageData,
       });
     } catch (submitError) {
@@ -154,8 +164,8 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
         <header className="map-editor-header">
           <div>
             <p className="map-editor-eyebrow">FLOOR PLAN REVIEW</p>
-            <h2 id="map-editor-title">Build a route-ready map</h2>
-            <p>Mark areas on the image, connect walkable spaces, and outline walls.</p>
+            <h2 id="map-editor-title">{initialMap ? 'Edit floor map' : 'Build a route-ready map'}</h2>
+            <p>Mark areas on the image, choose rooms with cameras, connect walkable spaces, and outline walls.</p>
           </div>
           <button type="button" className="map-editor-close" onClick={onCancel} aria-label="Close map editor">×</button>
         </header>
@@ -200,7 +210,8 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
               </div>
               {nodes.length === 0 && <p className="map-editor-empty">No areas marked yet.</p>}
               {nodes.map(node => (
-                <div className="map-editor-node" key={node.id}>
+                <div className="map-editor-node-group" key={node.id}>
+                  <div className="map-editor-node">
                   <span className="map-editor-node-dot" style={{ background: COLORS[node.type] }} />
                   <input
                     aria-label={`${node.id} label`}
@@ -215,6 +226,19 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
                     {TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
                   </select>
                   <button type="button" onClick={() => removeNode(node.id)} aria-label={`Remove ${node.label}`}>×</button>
+                  </div>
+                  {node.type === 'room' && (
+                    <label className="map-editor-camera-choice">
+                      <input
+                        type="checkbox"
+                        checked={cameraNodeIds.includes(node.id)}
+                        onChange={event => setCameraNodeIds(current => event.target.checked
+                          ? [...current, node.id]
+                          : current.filter(id => id !== node.id))}
+                      />
+                      Camera in this room
+                    </label>
+                  )}
                 </div>
               ))}
               {edges.length > 0 && (
@@ -302,7 +326,7 @@ export default function MapDraftEditor({ imageData, onCancel, onCreate }) {
           <div>
             <button type="button" className="map-editor-cancel" onClick={onCancel} disabled={saving}>Cancel</button>
             <button type="button" className="map-editor-save" onClick={submitDraft} disabled={saving}>
-              {saving ? 'Creating map…' : 'Create map & route'}
+              {saving ? 'Saving map...' : (initialMap ? 'Save map changes' : 'Create map & route')}
             </button>
           </div>
         </footer>

@@ -13,6 +13,9 @@ FIRE_SMOKE_MODEL_PATH = Path(os.getenv(
 ))
 
 DEFAULT_CONFIDENCE = 0.40
+PERSON_CONFIDENCE = float(os.getenv("PERSON_CONFIDENCE", "0.25"))
+FIRE_CONFIDENCE = float(os.getenv("FIRE_CONFIDENCE", str(DEFAULT_CONFIDENCE)))
+SMOKE_CONFIDENCE = float(os.getenv("SMOKE_CONFIDENCE", "0.20"))
 DEFAULT_ROOM_CAPACITY = 50
 
 # Dataset classes (read from data.yaml: names: ['smoke', 'fire'])

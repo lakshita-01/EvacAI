@@ -4,6 +4,24 @@ import {
 } from '../services/api';
 import socket from '../services/socket';
 
+const ACTIVE_MAP_STORAGE_KEY = 'evac-ai-active-map-id';
+
+function getCameraTarget(mapData, cameraId) {
+  const configured = mapData?.cameras?.find(camera => camera.cameraId === cameraId);
+  const area = Object.values(mapData?.nodes || {}).find(
+    node => node.type !== 'exit' && `CAM-${node.id}` === cameraId,
+  );
+  const nodeId = configured?.nodeId || area?.id;
+  if (!nodeId) return null;
+  const areas = Object.values(mapData?.nodes || {});
+  const firstRoom = areas.find(node => node.type === 'room');
+  return {
+    nodeId,
+    mapId: mapData.mapId,
+    startNode: mapData.isDemo ? 'ROOM-A' : (firstRoom?.id || nodeId),
+  };
+}
+
 export function useEvacSystem() {
   const [mapData,   setMapData]   = useState(null);
   const [route,     setRoute]     = useState(null);
@@ -16,19 +34,57 @@ export function useEvacSystem() {
   const [liveActive,   setLiveActive]   = useState(false);
   const [liveCamera,   setLiveCamera]   = useState('CAM-01');
   const [liveStatus,   setLiveStatus]   = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
   const streamRef    = useRef(null);
   const intervalRef  = useRef(null);
   const videoRef     = useRef(null);
+  const activeMapIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapData?.mapId) return;
+    const areas = Object.values(mapData.nodes || {});
+    const firstRoom = areas.find(node => node.type === 'room') || areas.find(node => node.type !== 'exit');
+    const nextCamera = mapData.isDemo
+      ? 'CAM-01'
+      : (mapData.cameras || [])[0]?.cameraId || (firstRoom ? `CAM-${firstRoom.id}` : '');
+    setLiveCamera(nextCamera);
+  }, [mapData?.mapId]);
 
   // Load demo map on mount
   useEffect(() => {
     (async () => {
       try {
         await seedCameras();
+        let savedMapId = null;
+        try { savedMapId = window.localStorage.getItem(ACTIVE_MAP_STORAGE_KEY); } catch { /* storage may be disabled */ }
+        if (savedMapId && savedMapId !== 'DEMO-MAP-001') {
+          try {
+            const savedResponse = await getMap(savedMapId);
+            const savedMap = savedResponse.data.mapData || savedResponse.data;
+            activeMapIdRef.current = savedMap.mapId;
+            setMapData(savedMap);
+            const nodes = Object.values(savedMap.nodes || {});
+            const startNode = nodes.find(node => node.type === 'room')?.id || nodes[0]?.id;
+            if (startNode) {
+              try {
+                const routeRes = await calcRoute({ mapId: savedMap.mapId, startNode });
+                setRoute(routeRes.data);
+              } catch {
+                setRoute(null);
+              }
+            }
+            return;
+          } catch (restoreError) {
+            if (restoreError.response?.status !== 404) throw restoreError;
+            try { window.localStorage.removeItem(ACTIVE_MAP_STORAGE_KEY); } catch { /* storage may be disabled */ }
+          }
+        }
         await getDemoMap();
         await resetAllHazards('DEMO-MAP-001');
         const res = await getDemoMap();
-        setMapData(res.data.mapData || res.data);
+        const demoMap = res.data.mapData || res.data;
+        activeMapIdRef.current = demoMap.mapId;
+        setMapData(demoMap);
         try {
           const routeRes = await calcRoute({ mapId: 'DEMO-MAP-001', startNode: 'ROOM-A' });
           setRoute(routeRes.data);
@@ -48,7 +104,11 @@ export function useEvacSystem() {
   useEffect(() => {
     socket.on('alert', (alert) => setAlerts(prev => [alert, ...prev].slice(0, 50)));
     socket.on('stateUpdate', (update) => {
+      if (update.mapId && activeMapIdRef.current && update.mapId !== activeMapIdRef.current) return;
       if (update.route?.route) setRoute(update.route);
+      if (update.type === 'LIVE' && update.detection) {
+        setSimResult({ detection: update.detection, route: update.route || null, analysisSource: 'live' });
+      }
       if (update.mapId) {
         getMap(update.mapId).then(res => setMapData(res.data.mapData || res.data));
       }
@@ -72,8 +132,15 @@ export function useEvacSystem() {
       form.append('file', blob, 'frame.jpg');
       form.append('camera_id', cameraId);
       form.append('room_capacity', '50');
+      const target = getCameraTarget(mapData, cameraId);
+      if (target) {
+        form.append('node_id', target.nodeId);
+        form.append('map_id', target.mapId);
+        form.append('start_node', target.startNode);
+      }
       try {
         const res = await liveFrame(form);
+        setSimResult({ ...res.data, analysisSource: 'live' });
         const risk = res.data?.risk?.level || 'unknown';
         const fire  = res.data?.fireSmoke?.fireDetected  ? '🔥' : '';
         const smoke = res.data?.fireSmoke?.smokeDetected ? '💨' : '';
@@ -83,7 +150,7 @@ export function useEvacSystem() {
         setLiveStatus(`ERROR: ${e.message}`);
       }
     }, 'image/jpeg', 0.85);
-  }, []);
+  }, [mapData]);
 
   const startLive = useCallback(async (cameraId) => {
     try {
@@ -120,6 +187,36 @@ export function useEvacSystem() {
     if (liveActive) stopLive();
     else startLive(liveCamera);
   }, [liveActive, liveCamera, startLive, stopLive]);
+
+  const uploadCameraImage = useCallback(async (file, cameraId) => {
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('camera_id', cameraId);
+    form.append('room_capacity', '50');
+    const target = getCameraTarget(mapData, cameraId);
+    if (target) {
+      form.append('node_id', target.nodeId);
+      form.append('map_id', target.mapId);
+      form.append('start_node', target.startNode);
+    }
+    setImageUploading(true);
+    setLiveStatus(`Analyzing ${file.name} for ${cameraId}...`);
+    try {
+      const res = await liveFrame(form);
+      setSimResult({ ...res.data, analysisSource: 'upload' });
+      const risk = res.data?.risk?.level || 'unknown';
+      const fire = res.data?.fireSmoke?.fireDetected ? 'Fire detected' : '';
+      const smoke = res.data?.fireSmoke?.smokeDetected ? 'Smoke detected' : '';
+      const hazards = [fire, smoke].filter(Boolean).join(', ') || 'No fire or smoke detected';
+      const people = res.data?.people?.count ?? '?';
+      setLiveStatus(`${cameraId} | people: ${people} | ${hazards} | risk: ${risk.toUpperCase()}`);
+    } catch (e) {
+      setLiveStatus(`ERROR: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setImageUploading(false);
+    }
+  }, [mapData]);
 
   // Stop stream on unmount
   useEffect(() => () => stopLive(), [stopLive]);
@@ -159,6 +256,8 @@ export function useEvacSystem() {
       Object.keys(nextMap.nodes || {})[0];
     if (liveActive) stopLive();
     setError(null);
+    activeMapIdRef.current = nextMap.mapId;
+    try { window.localStorage.setItem(ACTIVE_MAP_STORAGE_KEY, nextMap.mapId); } catch { /* storage may be disabled */ }
     setMapData(nextMap);
     setAlerts([]);
     setSimResult(null);
@@ -180,6 +279,6 @@ export function useEvacSystem() {
 
   return {
     mapData, route, alerts, loading, error, simResult, runSimulation, reset, setAlerts, activateMap,
-    liveActive, liveCamera, setLiveCamera, toggleLive, liveStatus,
+    liveActive, liveCamera, setLiveCamera, toggleLive, liveStatus, imageUploading, uploadCameraImage,
   };
 }

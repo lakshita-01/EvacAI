@@ -14,7 +14,7 @@ const TYPE_ICON = {
   INFO:          'ℹ️',
 };
 
-export default function AlertPanel({ alerts, onResolveAll }) {
+export default function AlertPanel({ alerts, onResolveAll, onDismiss }) {
   return (
     <div className="alerts-panel">
       <div className="alerts-header">
@@ -34,6 +34,13 @@ export default function AlertPanel({ alerts, onResolveAll }) {
         {alerts.filter(a => !a.resolved).map((alert, i) => (
           <div key={alert._id || i}
             className={`alert-item ${(alert.severity || 'INFO').toLowerCase()}`}>
+            <button
+              type="button"
+              className="alert-dismiss"
+              onClick={() => onDismiss(alert)}
+              aria-label={`Dismiss ${alert.type?.toLowerCase() || 'notification'} alert`}
+              title="Dismiss alert"
+            >×</button>
             <div className="alert-item-head">
               <span aria-hidden="true">{TYPE_ICON[alert.type] || 'ℹ️'}</span>
               <div className="alert-item-body">

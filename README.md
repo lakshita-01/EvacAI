@@ -86,13 +86,15 @@ The AI service loads both model files when it starts:
 - `ai-service/models/person/yolo26n.pt`
 - `ai-service/models/fire_smoke/best.pt`
 
-The custom fire/smoke model is excluded by `.gitignore`. For a **private** deployment repository, include it explicitly:
+The custom fire/smoke model is excluded by `.gitignore`. For Hugging Face deployment, keep both model files in a private Hugging Face model repository and configure the Space with `HF_MODEL_REPO_ID` and a read-only `HF_TOKEN` secret. See [`ai-service/README.md`](./ai-service/README.md) for the required repository paths.
+
+If you instead put the custom model in a **private source repository**, add it explicitly:
 
 ```powershell
 git add -f ai-service/models/fire_smoke/best.pt
 ```
 
-Do not force-add model weights to a public repository. For a public repository, use private storage and configure `FIRE_SMOKE_MODEL_PATH` on the AI service. The model is larger than Render's 1 MB Secret File limit, so Secret Files are not a suitable way to upload it.
+Do not force-add model weights to a public repository.
 
 ## Tests and build
 
@@ -106,7 +108,7 @@ Set-Location ..\map-service
 python -m pytest tests -v
 
 Set-Location ..\ai-service
-python -m pytest tests\test_person.py tests\test_analysis.py -v
+python -m pytest tests\test_model_assets.py tests\test_person.py tests\test_analysis.py -v
 
 Set-Location ..\frontend
 npm run build
@@ -118,9 +120,9 @@ The fire/smoke detector tests require the custom model file.
 
 Deployment configuration is included in [`render.yaml`](./render.yaml) and [`frontend/vercel.json`](./frontend/vercel.json).
 
-1. Create a MongoDB Atlas cluster and database user. Configure Atlas Network Access to allow the Render backend to connect. Add the Atlas URI as the `MONGO_URI` secret on the Render backend service; never put it in source control.
-2. Connect the repository to Render as a Blueprint, using the repository root containing `render.yaml`. The Blueprint defines the backend and the private map and AI services.
-3. Ensure both AI model files are available to the AI service before deploying. Review the selected Render plans and pricing before creating services; the AI service may need additional memory.
+1. Create a MongoDB Atlas cluster and database user. Configure Atlas Network Access to allow the Render backend to connect. Add the Atlas URI as the `MONGO_URI` secret on Render; never put it in source control.
+2. Connect the repository to Render as a Blueprint, using the repository root containing `render.yaml`. It creates free web services for the backend and map service. Set `AI_SERVICE_URL` to the Hugging Face Space base URL and `MAP_SERVICE_URL` to the map service's public Render URL.
+3. Deploy the AI service as a Hugging Face Gradio Space using [`ai-service/README.md`](./ai-service/README.md). Store model weights in a private Hugging Face model repository and configure the Space's `HF_MODEL_REPO_ID` variable and `HF_TOKEN` secret.
 4. Import the repository into Vercel with the project root set to `frontend`, build command `npm run build`, and output directory `dist`.
 5. Add these Vercel build environment variables, replacing the host with the public Render backend URL:
 
@@ -131,7 +133,7 @@ Deployment configuration is included in [`render.yaml`](./render.yaml) and [`fro
 
 6. Deploy the frontend after the Render backend is available. Verify the backend root (`/`), `/api/ai/health`, and the deployed dashboard.
 
-Render services may incur charges, and Atlas network access should be restricted as much as your hosting setup allows. This app has no user authentication, and uploaded map graphs are held in map-service memory; treat it as a public demo and do not upload sensitive building plans.
+Render's free services sleep when idle and share a monthly free-instance-hours allowance. Hugging Face Spaces may also sleep; the AI service uses ZeroGPU and free accounts have a daily GPU usage quota. Atlas network access should be restricted as much as your hosting setup allows. This app has no user authentication, and uploaded map graphs are held in map-service memory; treat it as a public demo and do not upload sensitive building plans.
 
 ## Project layout
 

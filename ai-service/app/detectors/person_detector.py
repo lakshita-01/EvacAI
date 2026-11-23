@@ -1,5 +1,6 @@
 from pathlib import Path
-from ultralytics import YOLO
+
+from app.detectors.model_loader import load_yolo_model
 
 PERSON_CLASS_ID = 0
 
@@ -7,8 +8,8 @@ PERSON_CLASS_ID = 0
 class PersonDetector:
     """Detects people in images using a pretrained YOLO model."""
 
-    def __init__(self, model_path: str | Path, confidence: float = 0.40):
-        self.model = YOLO(str(model_path))
+    def __init__(self, model_path: str | Path, confidence: float = 0.25):
+        self.model = load_yolo_model(model_path)
         self.confidence = confidence
 
     def detect(self, image) -> dict:

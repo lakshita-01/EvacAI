@@ -84,6 +84,19 @@ def get_map(map_id: str):
     return _graphs[map_id]
 
 
+class RestoreMapRequest(BaseModel):
+    mapData: dict
+
+
+@router.post("/maps/restore")
+def restore_map(req: RestoreMapRequest):
+    map_id = req.mapData.get("mapId")
+    if not map_id:
+        raise HTTPException(status_code=422, detail="Stored map is missing its mapId")
+    _graphs[map_id] = copy.deepcopy(req.mapData)
+    return _graphs[map_id]
+
+
 @router.get("/maps/{map_id}/graph")
 def get_graph(map_id: str):
     if map_id not in _graphs:
@@ -245,12 +258,24 @@ class DraftMapRequest(BaseModel):
     nodes: list[DraftNode]
     edges: list[DraftEdge]
     exits: list[str]
+    cameraNodeIds: list[str] = Field(default_factory=list)
     walls: list[DraftWall] = Field(default_factory=list)
     imageData: Optional[str] = None
 
 
 @router.post("/maps/draft")
 def create_draft_map(req: DraftMapRequest):
+    return _save_draft_map(req)
+
+
+@router.put("/maps/{map_id}/draft")
+def update_draft_map(map_id: str, req: DraftMapRequest):
+    if map_id not in _graphs:
+        raise HTTPException(status_code=404, detail=f"Map '{map_id}' not found")
+    return _save_draft_map(req, map_id)
+
+
+def _save_draft_map(req: DraftMapRequest, map_id: Optional[str] = None):
     if req.imageData and (
         not req.imageData.startswith("data:image/png;base64,") or len(req.imageData) > 6 * 1024 * 1024
     ):
@@ -285,6 +310,8 @@ def create_draft_map(req: DraftMapRequest):
     room_ids = {node_id for node_id, node in nodes.items() if node["type"] == "room"}
     if not room_ids:
         raise HTTPException(status_code=422, detail="Mark at least one room")
+    if len(set(req.cameraNodeIds)) != len(req.cameraNodeIds) or not set(req.cameraNodeIds).issubset(room_ids):
+        raise HTTPException(status_code=422, detail="Cameras must be assigned to unique room areas")
 
     walls = []
     for wall in req.walls:
@@ -342,7 +369,7 @@ def create_draft_map(req: DraftMapRequest):
     if not room_ids.issubset(reachable):
         raise HTTPException(status_code=422, detail="Connect every room to an exit")
 
-    map_id = _next_map_id()
+    map_id = map_id or _next_map_id()
     graph = {
         "mapId": map_id,
         "isDemo": False,
@@ -352,7 +379,15 @@ def create_draft_map(req: DraftMapRequest):
         "exits": sorted(graph_exits),
         "walls": walls,
         "imageData": req.imageData,
-        "cameras": [],
+        "cameras": [
+            {
+                "cameraId": f"CAM-{node_id}",
+                "nodeId": node_id,
+                "name": f"{nodes[node_id]['label']} Camera",
+                "floor": 1,
+            }
+            for node_id in req.cameraNodeIds
+        ],
     }
     _graphs[map_id] = copy.deepcopy(graph)
     return graph

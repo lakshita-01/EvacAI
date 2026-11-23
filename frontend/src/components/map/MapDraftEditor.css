@@ -183,6 +183,25 @@
   gap: 5px;
 }
 
+.map-editor-node-group {
+  display: grid;
+  gap: 4px;
+}
+
+.map-editor-camera-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 13px;
+  color: #91a6b6;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.map-editor-camera-choice input {
+  accent-color: #22d3ee;
+}
+
 .map-editor-node-dot {
   width: 7px;
   height: 7px;

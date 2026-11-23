@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './SimulationControls.css';
 
-const SCENARIOS = [
-  { id: 'normal',         label: 'Normal',             icon: '✅', color: 'bg-green-900 hover:bg-green-800' },
-  { id: 'fire_room_a',    label: 'Fire in Room A',      icon: '🔥', color: 'bg-red-900 hover:bg-red-800' },
-  { id: 'smoke_corridor', label: 'Smoke in Corridor A', icon: '💨', color: 'bg-orange-900 hover:bg-orange-800' },
-  { id: 'crowd_room_b',   label: 'High Crowd Room B',   icon: '👥', color: 'bg-yellow-900 hover:bg-yellow-800' },
-  { id: 'fire_junction',  label: 'Fire at Junction',    icon: '🚨', color: 'bg-red-950 hover:bg-red-900' },
-];
-
 const CAMERAS = [
   { id: 'CAM-01', label: 'CAM-01 — Corridor A' },
   { id: 'CAM-02', label: 'CAM-02 — Room A' },
@@ -19,9 +11,19 @@ const CAMERAS = [
 export default function SimulationControls({
   onSimulate, onReset, loading,
   liveActive, liveCamera, onLiveCameraChange, onLiveToggle, liveStatus,
+  imageUploading, onCameraImageUpload,
   mapData,
 }) {
   const nodes = useMemo(() => Object.values(mapData?.nodes || {}), [mapData?.nodes]);
+  const rooms = nodes.filter(node => node.type === 'room');
+  const cameraAreas = rooms.length ? rooms : nodes.filter(node => node.type !== 'exit');
+  const roomCameras = cameraAreas
+    .map(node => ({ cameraId: `CAM-${node.id}`, nodeId: node.id, name: `${node.label || node.id} Camera` }));
+  const cameras = mapData?.cameras?.length
+    ? mapData.cameras
+    : mapData?.isDemo
+      ? CAMERAS
+      : roomCameras;
   const targetNodes = nodes.filter(node => node.type !== 'exit');
   const [targetNodeId, setTargetNodeId] = useState('');
   const [startNodeId, setStartNodeId] = useState('');
@@ -48,25 +50,44 @@ export default function SimulationControls({
   return (
     <div className="flex flex-col gap-3">
 
-      {mapData?.isDemo && (
+      {mapData && (
         <div className="live-panel">
           <h3 className="panel-heading">Live Camera</h3>
+          {cameras.length === 0 && (
+            <p className="live-camera-empty">Mark an area on this floor plan to assign a camera.</p>
+          )}
           <select
             value={liveCamera}
             onChange={e => onLiveCameraChange(e.target.value)}
-            disabled={liveActive}
+            disabled={liveActive || imageUploading || cameras.length === 0}
             className="live-select"
           >
-            {CAMERAS.map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
+            {cameras.map(camera => (
+              <option key={camera.cameraId || camera.id} value={camera.cameraId || camera.id}>
+                {camera.cameraId ? `${camera.cameraId} — ${camera.name}` : camera.label}
+              </option>
             ))}
           </select>
           <button
             onClick={onLiveToggle}
+            disabled={imageUploading || cameras.length === 0}
             className={`live-toggle ${liveActive ? 'stop' : 'start'}`}
           >
             {liveActive ? 'Stop Live Feed' : 'Start Live Feed'}
           </button>
+          <label className={`camera-upload ${liveActive || imageUploading || cameras.length === 0 ? 'disabled' : ''}`}>
+            <span>{imageUploading ? 'Analyzing image...' : 'Upload image for this camera'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={liveActive || imageUploading || cameras.length === 0}
+              onChange={event => {
+                const file = event.target.files?.[0];
+                if (file) onCameraImageUpload(file);
+                event.target.value = '';
+              }}
+            />
+          </label>
           {liveStatus && (
             <div className={`live-status ${liveStatus.startsWith('ERROR') ? 'error' : ''}`}>
               {liveStatus}
@@ -75,20 +96,7 @@ export default function SimulationControls({
         </div>
       )}
 
-      {/* ── Simulation Panel ── */}
       <div className="control-panel">
-        <h3 className="panel-heading">Simulation Mode</h3>
-        <div className="scenario-grid">
-          {SCENARIOS.filter(scenario => mapData?.isDemo || scenario.id === 'normal').map(s => (
-            <button key={s.id}
-              onClick={() => onSimulate(s.id, undefined, undefined, startNodeId)}
-              disabled={loading || liveActive}
-              className="simulation-button">
-              <span>{s.icon}</span>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </div>
         <div className="map-simulation-builder">
           <h4>Simulate any area</h4>
           <label>
@@ -109,7 +117,7 @@ export default function SimulationControls({
             {dynamicOptions.map(option => (
               <button key={option.id}
                 onClick={() => onSimulate(option.id, targetNodeId, undefined, startNodeId)}
-                disabled={loading || liveActive || !selectedNode || !selectedStart ||
+                disabled={loading || imageUploading || liveActive || !selectedNode || !selectedStart ||
                   (option.nonExitOnly && selectedNode.type === 'exit')}
                 className="simulation-button">
                 <span>{option.icon}</span>
@@ -127,12 +135,12 @@ export default function SimulationControls({
           </label>
           <button className="simulation-button"
             onClick={() => onSimulate('custom', targetNodeId, customRisk, startNodeId)}
-            disabled={loading || liveActive || !selectedNode || !selectedStart}>
+            disabled={loading || imageUploading || liveActive || !selectedNode || !selectedStart}>
             <span>⚙️</span><span>Apply custom hazard</span>
           </button>
         </div>
         <button onClick={onReset}
-          disabled={liveActive}
+          disabled={liveActive || imageUploading}
           className="reset-button">
           Reset Simulation
         </button>

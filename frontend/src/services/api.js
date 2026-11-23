@@ -12,6 +12,7 @@ export const getDemoMap   = ()           => api.get('/maps/demo');
 export const getMap       = (id)         => api.get(`/maps/${id}`);
 export const uploadDxf    = (formData)   => api.post('/maps/upload', formData);
 export const createDraftMap = (body)     => api.post('/maps/draft', body);
+export const updateDraftMap = (id, body)  => api.put(`/maps/${id}/draft`, body);
 export const getAlerts    = ()           => api.get('/alerts');
 export const resolveAlert = (id)         => api.patch(`/alerts/${id}`);
 export const resolveAll   = ()           => api.post('/alerts/resolve-all');

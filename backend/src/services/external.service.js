@@ -7,10 +7,11 @@ function serviceUrl(url, hostport, localFallback) {
   return localFallback;
 }
 
+// The AI service root serves /api/analyze/frame (port 8000 for local development).
 const AI_URL = serviceUrl(process.env.AI_SERVICE_URL, process.env.AI_SERVICE_HOSTPORT, 'http://127.0.0.1:8000');
 const MAP_URL = serviceUrl(process.env.MAP_SERVICE_URL, process.env.MAP_SERVICE_HOSTPORT, 'http://127.0.0.1:8001');
 
-const aiClient = axios.create({ baseURL: AI_URL, timeout: 30000 });
+const aiClient = axios.create({ baseURL: AI_URL, timeout: 120000 });
 const mapClient = axios.create({ baseURL: MAP_URL, timeout: 10000 });
 
 async function analyzeFrame(fileBuffer, filename, cameraId, roomCapacity = 50) {
@@ -52,6 +53,16 @@ async function createDraftMap(graph) {
   return res.data;
 }
 
+async function updateDraftMap(mapId, graph) {
+  const res = await mapClient.put(`/api/maps/${mapId}/draft`, graph);
+  return res.data;
+}
+
+async function restoreMap(mapData) {
+  const res = await mapClient.post('/api/maps/restore', { mapData });
+  return res.data;
+}
+
 async function calculateRoute(mapId, startNode, algorithm = 'astar') {
   const res = await mapClient.post('/api/routes/calculate', { mapId, startNode, algorithm });
   return res.data;
@@ -79,5 +90,5 @@ async function getMapHealth() {
 
 module.exports = {
   analyzeFrame, getAIHealth, getDemoMap, getMap, uploadDxf, createDraftMap,
-  calculateRoute, reroute, resetHazard, resetAllHazards, getMapHealth,
+  calculateRoute, reroute, resetHazard, resetAllHazards, getMapHealth, updateDraftMap, restoreMap,
 };

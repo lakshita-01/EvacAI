@@ -1,14 +1,24 @@
+import { getNodeDisplayName } from '../../utils/mapLabels';
+
 export default function StatsPanel({ route, simResult, mapData }) {
-  const risk = simResult?.route?.risk || route?.risk || 'normal';
+  const risk = simResult?.detection?.riskLevel || simResult?.risk?.level || simResult?.route?.risk || route?.risk || 'normal';
   const rerouted = simResult?.route?.rerouted || route?.rerouted;
   const status = !route ? 'NO ROUTE' : rerouted ? 'REROUTED' : 'ACTIVE';
   const riskLabel = String(risk).toUpperCase();
-  const destination = route?.exitNode || '—';
-  const destinationType = mapData?.nodes?.[destination]?.type || route?.destinationType;
+  const destinationId = route?.exitNode;
+  const destination = destinationId
+    ? getNodeDisplayName(mapData?.nodes?.[destinationId], destinationId)
+    : '—';
+  const destinationType = mapData?.nodes?.[destinationId]?.type || route?.destinationType;
   const destinationLabel = destinationType === 'stairs' ? 'Stairs' : 'Exit';
-  const origin = route?.startNode || '—';
-  const blockedNode = simResult?.route?.blockedNode || simResult?.blockedNodes?.[0] || 'None';
+  const originId = route?.startNode;
+  const origin = originId ? getNodeDisplayName(mapData?.nodes?.[originId], originId) : '—';
+  const blockedNodeId = simResult?.route?.blockedNode || simResult?.blockedNodes?.[0];
+  const blockedNode = blockedNodeId
+    ? getNodeDisplayName(mapData?.nodes?.[blockedNodeId], blockedNodeId)
+    : 'None';
   const routePath = route?.route || [];
+  const displayRoute = routePath.map(nodeId => getNodeDisplayName(mapData?.nodes?.[nodeId], nodeId));
   const routeNodes = routePath.length || '—';
   const distance = route?.distance ? `${route.distance}m` : '—';
   const routeStatusClass = !route
@@ -71,7 +81,7 @@ export default function StatsPanel({ route, simResult, mapData }) {
               {routePath.slice(0, 5).map((node, index) => (
                 <span key={`${node}-${index}`} className="route-path-node">
                   {index > 0 && <i aria-hidden="true" />}
-                  {node}
+                  {displayRoute[index]}
                 </span>
               ))}
               {routePath.length > 5 && <span className="route-path-more">+{routePath.length - 5}</span>}

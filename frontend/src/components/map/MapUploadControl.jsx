@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { createDraftMap, uploadDxf } from '../../services/api';
+import { createDraftMap, updateDraftMap, uploadDxf } from '../../services/api';
 import MapDraftEditor from './MapDraftEditor';
 import './MapUploadControl.css';
 
@@ -45,12 +45,13 @@ async function hasSupportedImageSignature(file, extension) {
     : false;
 }
 
-export default function MapUploadControl({ onActivateMap }) {
+export default function MapUploadControl({ onActivateMap, mapData }) {
   const fileInput = useRef(null);
   const [imageDraft, setImageDraft] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [editingMap, setEditingMap] = useState(false);
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -101,15 +102,25 @@ export default function MapUploadControl({ onActivateMap }) {
 
   async function createImageMap(graph) {
     try {
-      const response = await createDraftMap(graph);
-      const mapData = response.data.mapData || response.data;
-      await onActivateMap(mapData);
+      const response = editingMap
+        ? await updateDraftMap(mapData.mapId, graph)
+        : await createDraftMap(graph);
+      const savedMap = response.data.mapData || response.data;
+      await onActivateMap(savedMap);
       setImageDraft(null);
-      setNotice('Floor-plan draft created. Select areas to run map-based simulations.');
+      setEditingMap(false);
+      setNotice(editingMap ? 'Floor-plan map updated.' : 'Floor-plan draft created. Select areas to run map-based simulations.');
     } catch (createError) {
       const detail = createError.response?.data?.error || createError.response?.data?.detail;
       throw new Error(typeof detail === 'string' ? detail : createError.message);
     }
+  }
+
+  function editImageMap() {
+    setError('');
+    setNotice('');
+    setEditingMap(true);
+    setImageDraft(mapData.imageData);
   }
 
   return (
@@ -134,15 +145,26 @@ export default function MapUploadControl({ onActivateMap }) {
         </button>
         <span className="map-upload-formats">DXF · PNG · JPG</span>
       </div>
+      {mapData?.sourceType === 'image' && mapData.imageData && (
+        <button type="button" className="map-upload-button map-edit-button" onClick={editImageMap} disabled={busy}>
+          Edit current floor map
+        </button>
+      )}
       {(error || notice) && (
-        <p className={`map-upload-feedback ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>
-          {error || notice}
-        </p>
+        <div className={`map-upload-feedback ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>
+          <span>{error || notice}</span>
+          <button
+            type="button"
+            onClick={() => { setError(''); setNotice(''); }}
+            aria-label="Dismiss floor plan notification"
+          >×</button>
+        </div>
       )}
       {imageDraft && (
         <MapDraftEditor
           imageData={imageDraft}
-          onCancel={() => setImageDraft(null)}
+          initialMap={editingMap ? mapData : null}
+          onCancel={() => { setImageDraft(null); setEditingMap(false); }}
           onCreate={createImageMap}
         />
       )}

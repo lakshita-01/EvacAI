@@ -23,10 +23,10 @@ export const NODE_TYPE_COLORS = {
 };
 
 export const NODE_RADIUS = {
-  room:      28,
-  corridor:  20,
-  junction:  18,
-  stairs:    18,
-  exit:      24,
-  door:      14,
+  room:      18,
+  corridor:  14,
+  junction:  13,
+  stairs:    13,
+  exit:      16,
+  door:      10,
 };

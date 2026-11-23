@@ -173,14 +173,15 @@ async function simulate(req, res, next) {
 async function processLiveFrame(req, res, next) {
   try {
     const io = req.app.get('io');
-    const { camera_id = 'unknown', room_capacity = '50' } = req.body;
+    const { camera_id = 'unknown', room_capacity = '50', node_id, map_id, start_node } = req.body;
 
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     // Look up which map node this camera covers
     const camera = await Camera.findOne({ cameraId: camera_id });
-    const nodeId    = camera?.nodeId  || 'CORR-A';
-    const mapId     = camera?.mapId   || 'DEMO-MAP-001';
+    const nodeId    = node_id || camera?.nodeId || 'CORR-A';
+    const mapId     = map_id || camera?.mapId || 'DEMO-MAP-001';
+    const startNode = start_node || 'ROOM-A';
 
     // Run YOLO analysis via ai-service
     const result = await analyzeFrame(
@@ -205,12 +206,12 @@ async function processLiveFrame(req, res, next) {
 
     // Reroute if risk is HIGH or CRITICAL
     if (riskLevel === 'HIGH' || riskLevel === 'CRITICAL') {
-      routeResult = await reroute(mapId, camera_id, nodeId, riskLevel, 'ROOM-A');
+      routeResult = await reroute(mapId, camera_id, nodeId, riskLevel, startNode);
 
       if (routeResult?.route) {
         await Route.create({
           mapId,
-          startNode:    'ROOM-A',
+          startNode,
           exitNode:     routeResult.exitNode,
           route:        routeResult.route,
           distance:     routeResult.distance,

@@ -1,5 +1,5 @@
 from pathlib import Path
-from app.config import PERSON_MODEL_PATH, FIRE_SMOKE_MODEL_PATH, DEFAULT_CONFIDENCE
+from app.config import PERSON_MODEL_PATH, FIRE_SMOKE_MODEL_PATH, PERSON_CONFIDENCE
 from app.detectors.person_detector import PersonDetector
 from app.detectors.fire_smoke_detector import FireSmokeDetector
 from app.analysis.density import calculate_density
@@ -14,8 +14,8 @@ class EvacuationAnalyzer:
         person_model_path: Path = PERSON_MODEL_PATH,
         fire_smoke_model_path: Path = FIRE_SMOKE_MODEL_PATH,
     ):
-        self.person_detector = PersonDetector(model_path=person_model_path, confidence=DEFAULT_CONFIDENCE)
-        self.fire_smoke_detector = FireSmokeDetector(model_path=fire_smoke_model_path, confidence=DEFAULT_CONFIDENCE)
+        self.person_detector = PersonDetector(model_path=person_model_path, confidence=PERSON_CONFIDENCE)
+        self.fire_smoke_detector = FireSmokeDetector(model_path=fire_smoke_model_path)
 
     def analyze(self, image, room_capacity: int) -> dict:
         person_result = self.person_detector.detect(image)

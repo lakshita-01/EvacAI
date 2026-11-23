@@ -4,11 +4,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from PIL import Image
 
-from app.analysis.analyzer import EvacuationAnalyzer
+from app.analysis.inference import analyze_image
 from app.config import DEFAULT_ROOM_CAPACITY
 
 router = APIRouter()
-_analyzer = EvacuationAnalyzer()
 
 
 @router.get("/health")
@@ -44,7 +43,7 @@ async def analyze_frame(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
 
-    result = _analyzer.analyze(image=image, room_capacity=room_capacity)
+    result = analyze_image(image=image, room_capacity=room_capacity)
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),

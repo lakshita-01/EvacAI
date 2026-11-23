@@ -1,4 +1,5 @@
 import { RISK_COLORS, RISK_STROKE, NODE_TYPE_COLORS, NODE_RADIUS } from '../../utils/mapColors';
+import { getNodeDisplayName } from '../../utils/mapLabels';
 import { useEffect, useState } from 'react';
 
 const W = 800;
@@ -25,6 +26,7 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
   const { nodes = {}, edges = [], exits = [], cameras = [], walls = [] } = mapData;
   const routeSet = new Set(route?.route || []);
   const routeArr = route?.route || [];
+  const routeColor = route?.rerouted ? '#facc15' : '#22d3ee';
 
   const {
     showHeatmap = true,
@@ -97,8 +99,8 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
           <line key={i}
             x1={scaleX(s.x)} y1={scaleY(s.y)}
             x2={scaleX(t.x)} y2={scaleY(t.y)}
-            stroke={isBlocked ? '#ef4444' : isOnRoute && showRoute ? '#22d3ee' : '#374151'}
-            strokeWidth={isBlocked ? 3 : isOnRoute && showRoute ? 4 : 1.5}
+            stroke={isBlocked ? '#ef4444' : isOnRoute && showRoute ? routeColor : '#374151'}
+            strokeWidth={isBlocked ? 3 : isOnRoute && showRoute ? 6 : 1.5}
             strokeDasharray={isBlocked ? '6,4' : isOnRoute ? '0' : '0'}
             opacity={0.8}
           />
@@ -113,8 +115,12 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
           .map(n => `${scaleX(n.x)},${scaleY(n.y)}`)
           .join(' ');
         return (
-          <polyline points={pts} fill="none"
-            stroke="#22d3ee" strokeWidth={3} strokeDasharray="8,4" opacity={0.9} />
+          <>
+            <polyline points={pts} fill="none" stroke="#07111f"
+              strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+            <polyline points={pts} fill="none" stroke={routeColor}
+              strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+          </>
         );
       })()}
 
@@ -124,8 +130,8 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
         const cy = scaleY(node.y);
         const baseRadius = NODE_RADIUS[node.type] || 18;
         const r = floorImage ? baseRadius * 0.62 : baseRadius;
-        const haloRadius = floorImage ? r + 8 : baseRadius + 20;
-        const labelOffset = floorImage ? r + 10 : r + 12;
+        const haloRadius = floorImage ? r + 5 : r + 12;
+        const labelOffset = floorImage ? r + 7 : r + 8;
         const isExit    = node.type === 'exit';
         const isBlocked = node.blocked;
         const isOnRoute = routeSet.has(node.id);
@@ -143,7 +149,7 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
             {/* Node circle */}
             <circle cx={cx} cy={cy} r={r}
               fill={isBlocked ? '#7f1d1d' : NODE_TYPE_COLORS[node.type] || '#374151'}
-              stroke={isOnRoute && showRoute ? '#22d3ee' : isBlocked ? '#ef4444' : '#6b7280'}
+              stroke={isOnRoute && showRoute ? routeColor : isBlocked ? '#ef4444' : '#6b7280'}
               strokeWidth={isOnRoute ? 3 : 1.5}
             />
 
@@ -151,7 +157,7 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
             {isExit && showExits && (
               <text cx={cx} cy={cy} x={cx} y={cy + 1}
                 textAnchor="middle" dominantBaseline="middle"
-                fontSize={floorImage ? '11' : '14'} fill="#fff">🟢</text>
+                fontSize={floorImage ? '9' : '11'} fill="#fff">🟢</text>
             )}
 
             {/* Blocked X */}
@@ -165,11 +171,11 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
             {/* Label */}
             {showLabels && (
               <text x={cx} y={cy + labelOffset} textAnchor="middle"
-                fontSize={floorImage ? '11' : '10'}
+                fontSize={floorImage ? '9' : '8'}
                 fill={floorImage ? '#f8fafc' : '#9ca3af'}
                 stroke={floorImage ? 'rgba(7,17,31,.9)' : 'none'}
                 strokeWidth={floorImage ? 3 : 0}
-                paintOrder="stroke">{node.label || node.id}</text>
+                paintOrder="stroke">{getNodeDisplayName(node, node.id)}</text>
             )}
           </g>
         );
@@ -209,7 +215,7 @@ export default function FloorMap({ mapData, route, showControls = {}, mapImage =
           { color: '#16a34a', label: 'Exit' },
           { color: '#7c3aed', label: 'Stairs' },
           { color: '#ef4444', label: 'Blocked' },
-          { color: '#22d3ee', label: 'Route' },
+          { color: routeColor, label: route?.rerouted ? 'Rerouted route' : 'Route' },
         ].map(({ color, label }, i) => (
           <g key={label} transform={`translate(${(i % 3) * 90}, ${Math.floor(i / 3) * 18})`}>
             <rect width={12} height={12} rx={2} fill={color} />

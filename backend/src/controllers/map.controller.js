@@ -1,4 +1,4 @@
-const { getDemoMap, getMap, uploadDxf, createDraftMap } = require('../services/external.service');
+const { getDemoMap, getMap, uploadDxf, createDraftMap, updateDraftMap, restoreMap } = require('../services/external.service');
 const Building = require('../models/Building');
 
 function forwardMapServiceError(err, next) {
@@ -43,6 +43,22 @@ async function createDraft(req, res, next) {
   }
 }
 
+async function updateDraft(req, res, next) {
+  try {
+    const building = await Building.findOne({ mapId: req.params.id });
+    if (!building || building.graphData?.sourceType !== 'image') {
+      return res.status(404).json({ error: 'Editable image map not found' });
+    }
+
+    const mapData = await updateDraftMap(req.params.id, req.body);
+    building.graphData = mapData;
+    await building.save();
+    res.json({ mapData });
+  } catch (err) {
+    forwardMapServiceError(err, next);
+  }
+}
+
 async function demo(req, res, next) {
   try {
     const mapData = await getDemoMap();
@@ -63,7 +79,16 @@ async function getById(req, res, next) {
     const mapData = await getMap(req.params.id);
     res.json(mapData);
   } catch (err) {
-    if (err.response?.status === 404) return res.status(404).json({ error: 'Map not found' });
+    if (err.response?.status === 404) {
+      try {
+        const building = await Building.findOne({ mapId: req.params.id });
+        if (!building?.graphData) return res.status(404).json({ error: 'Map not found' });
+        await restoreMap(building.graphData);
+        return res.json(building.graphData);
+      } catch (restoreError) {
+        return next(restoreError);
+      }
+    }
     next(err);
   }
 }
@@ -77,4 +102,4 @@ async function listBuildings(req, res, next) {
   }
 }
 
-module.exports = { upload, createDraft, demo, getById, listBuildings };
+module.exports = { upload, createDraft, updateDraft, demo, getById, listBuildings };

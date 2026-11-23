@@ -29,6 +29,13 @@
   background: #15414d;
 }
 
+.map-edit-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 7px;
+  justify-content: center;
+}
+
 .map-upload-button:disabled {
   opacity: 0.6;
   cursor: wait;
@@ -45,6 +52,9 @@
   right: 18px;
   bottom: 18px;
   z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   max-width: min(440px, calc(100vw - 36px));
   margin: 0;
   border: 1px solid #235a48;
@@ -54,6 +64,23 @@
   color: #9ce8bd;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
   font-size: 11px;
+}
+
+.map-upload-feedback > span {
+  flex: 1;
+}
+
+.map-upload-feedback > button {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .map-upload-feedback.error {

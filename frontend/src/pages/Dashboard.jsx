@@ -277,7 +277,13 @@ export default function Dashboard() {
                     : 'Start alarm'}
             </button>
           )}
-          <button type="button" className="emergency-dismiss" onClick={() => setEmergencyDismissed(true)} aria-label="Dismiss emergency notification">×</button>
+          <button
+            type="button"
+            className="emergency-dismiss"
+            onClick={() => { setEmergencyDismissed(true); if (needsAlarm) setAlarmMuted(true); }}
+            aria-label={needsAlarm ? 'Dismiss emergency notification and mute alarm' : 'Dismiss emergency notification'}
+            title={needsAlarm ? 'Dismiss and mute alarm' : 'Dismiss notification'}
+          >×</button>
         </section>
       )}
 
